@@ -1,0 +1,152 @@
+manifestVersion: 1
+name: robonix-ranger-mini-deploy
+
+# Robonix deploy manifest for the AgileX Ranger Mini + Livox MID-360
+# + Intel RealSense D435i stack on the Jetson Orin (`syswonder desktop`).
+#
+# Each `url:` package is a separate GitHub repo under enkerewpo. `rbnx
+# build` clones them into rbnx-boot/cache/<name>/ and runs each
+# package's scripts/build.sh; `rbnx boot` then spawns each one and
+# calls Driver(CMD_INIT, config_json) on its */driver gRPC interface.
+#
+# The manifest is an UNORDERED list. Boot ordering between packages is
+# handled implicitly: a package whose dep isn't ready returns
+# Driver_Response(state="deferred"); rbnx retries deferred packages
+# in a loop until the system reaches steady state. No explicit dep
+# graph in the manifest.
+
+env:
+  # Override on the launching shell if needed:
+  #   VLM_BASE_URL  for cloud-side reasoning (pilot)
+  #   VLM_API_KEY
+  #   VLM_MODEL
+
+system:
+  atlas:
+    listen: 127.0.0.1:50051
+    log: info
+  executor:
+    listen: 127.0.0.1:50061
+    log: info
+  pilot:
+    listen: 127.0.0.1:50071
+    log: info
+    vlm:
+      upstream: ${VLM_BASE_URL}
+      api_key: ${VLM_API_KEY}
+      model: ${VLM_MODEL}
+      api_format: openai
+
+  # ── Soma: robot body (URDF) provider ────────────────────────────────
+  # Loads a URDF and serves robonix/system/soma/{description, footprint,
+  # sensor_extrinsics}. Also spawns robot_state_publisher so /tf_static
+  # carries the base_link → livox_frame / camera_color_optical_frame /
+  # ... transforms that rtabmap and scene need.
+  #
+  # URDF path: provide a Ranger Mini URDF that includes the lidar +
+  # camera mount transforms. We don't ship a default — every robot's
+  # mount geometry differs. Until you have a calibrated URDF, an
+  # interim option is to drop static_transform_publisher invocations
+  # into a side-launch (see README.md for sketch).
+  soma:
+    log: info
+    urdf_path: /home/wheatfox/ranger_mini.urdf  # !!! provide on robot
+    model_name: ranger_mini
+    base_frame: base_link
+
+  # liaison / nexus / memory / scene: same as the webots example. They
+  # auto-discover topics from atlas, no per-deploy sensor wiring needed.
+  liaison:
+    listen: 127.0.0.1:50081
+    log: info
+  nexus:
+    log: info
+  memory:
+    backend: sqlite
+    log: info
+  scene:
+    log: info
+
+primitive:
+  # ── MID-360 lidar ───────────────────────────────────────────────────
+  # Owns primitive/lidar/*. Spawns livox_ros_driver2 in Driver.Init.
+  # Also makes /livox/imu live on the bus (consumed by mid360_imu below).
+  - name: mid360_lidar
+    url: https://github.com/enkerewpo/mid360_lidar_rbnx
+    branch: main
+    config:
+      lidar_topic: /scanner/cloud
+      lidar_ip: 192.168.1.161
+      # host_ip: omit → atlas_bridge auto-resolves via `ip route get`.
+      # Override only if the Jetson NIC's static config drifts.
+      xfer_format: 2          # PointCloud2 XYZIT (rtabmap-friendly)
+      sentinel_timeout_s: 30.0
+
+  # ── MID-360 IMU (topic shim, no ROS spawn) ──────────────────────────
+  # Owns primitive/imu/*. Subscribes to /livox/imu (which mid360_lidar's
+  # livox launch publishes) and atlas-routes it. If mid360_lidar isn't
+  # initialized yet, this returns deferred and rbnx retries.
+  - name: mid360_imu
+    url: https://github.com/enkerewpo/mid360_imu_rbnx
+    branch: main
+    config:
+      imu_topic: /livox/imu
+      defer_probe_s: 2.0
+
+  # ── RealSense D435i (RGBD) ─────────────────────────────────────────
+  # Owns primitive/camera/*. Spawns realsense2_camera's rs_launch.py.
+  - name: realsense_camera
+    url: https://github.com/enkerewpo/realsense_camera_rbnx
+    branch: main
+    config:
+      camera_name: camera_435i
+      rgb_profile: 640x480x30
+      depth_profile: 848x480x30
+      align_depth: true
+      enable_imu: true        # published, NOT atlas-routed (mid360 IMU is canonical)
+      enable_sync: true
+      sentinel_timeout_s: 30.0
+
+  # ── Ranger Mini chassis ─────────────────────────────────────────────
+  # Disabled in this initial bring-up — the chassis isn't powered on
+  # for the rtabmap-only first test. Uncomment once the chassis is
+  # ready and CAN bus is up.
+  # - name: ranger_chassis
+  #   url: https://github.com/enkerewpo/ranger_chassis_rbnx
+  #   branch: main
+  #   config:
+  #     port_name: can_ranger
+  #     robot_model: ranger_mini_v2
+  #     odom_topic_name: odom
+  #     publish_odom_tf: false   # let soma's robot_state_publisher own /tf
+  #     sentinel_timeout_s: 30.0
+
+service:
+  # ── SLAM (rtabmap) ──────────────────────────────────────────────────
+  # Discovers lidar3d + rgb + depth + imu via atlas at Init time and
+  # configures rtabmap to fuse them. Outputs service/map/{occupancy_grid,
+  # pointcloud, pose, odom} on atlas — algo-agnostic for consumers.
+  - name: mapping
+    url: https://github.com/enkerewpo/mapping_rbnx
+    branch: main
+    config:
+      algo: rtabmap
+      platform: jetson_orin
+      sensors:
+        lidar2d: false
+        lidar3d: true       # MID-360 PointCloud2
+        rgb: true           # RealSense visual loop closure
+        rgbd: true          # RealSense depth → 3D fusion
+        imu: true           # MID-360 IMU
+        odom: false         # chassis odom not wired this run
+
+  # ── Navigation (TODO) ───────────────────────────────────────────────
+  # Will be `nav2_wrapper_rbnx` once we lift it from webots. Disabled
+  # this run since the chassis isn't powered.
+  # - name: nav2
+  #   url: https://github.com/enkerewpo/nav2_wrapper_rbnx
+  #   branch: main
+  #   config: {}
+
+# Skills: deferred. The explore skill won't be useful without the chassis.
+# skill: []

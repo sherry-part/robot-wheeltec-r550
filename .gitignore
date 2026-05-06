@@ -1,0 +1,6 @@
+rbnx-build/
+rbnx-boot/
+.vscode/
+.idea/
+*.swp
+__pycache__/
