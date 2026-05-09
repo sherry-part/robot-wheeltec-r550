@@ -2,7 +2,11 @@ manifestVersion: 1
 name: robonix-ranger-mini-deploy
 
 # Robonix deploy manifest for the AgileX Ranger Mini + Livox MID-360
-# + Intel RealSense D435i stack on the Jetson Orin (`syswonder desktop`).
+# + Intel RealSense D435i stack, runs on the Jetson Orin (syswonder
+# desktop, ssh alias `robot`). On the Jetson, the latest robonix
+# source tree lives at /home/syswonder/wheatfox/robonix; rbnx is
+# `cargo run -p robonix-cli --release` or whatever wrapper the user
+# has set up.
 #
 # Each `url:` package is a separate GitHub repo under enkerewpo. `rbnx
 # build` clones them into rbnx-boot/cache/<name>/ and runs each
@@ -37,25 +41,16 @@ system:
       model: ${VLM_MODEL}
       api_format: openai
 
-  # ── Soma: robot body (URDF) provider ────────────────────────────────
-  # Loads a URDF and serves robonix/system/soma/{description, footprint,
-  # sensor_extrinsics}. Also spawns robot_state_publisher so /tf_static
-  # carries the base_link → livox_frame / camera_color_optical_frame /
-  # ... transforms that rtabmap and scene need.
+  # Soma (URDF + robot_state_publisher) is on the v0.2 roadmap, not
+  # yet implemented — see Robonix dev guide §3.6 / 附录 B. For ranger
+  # bring-up, run `static_transform_publisher` from a side launch (see
+  # README.md sketch) until soma ships.
   #
-  # URDF path: provide a Ranger Mini URDF that includes the lidar +
-  # camera mount transforms. We don't ship a default — every robot's
-  # mount geometry differs. Until you have a calibrated URDF, an
-  # interim option is to drop static_transform_publisher invocations
-  # into a side-launch (see README.md for sketch).
-  soma:
-    log: info
-    urdf_path: /home/wheatfox/ranger_mini.urdf  # !!! provide on robot
-    model_name: ranger_mini
-    base_frame: base_link
+  # Voice / speech (ASR + TTS + audio_driver) is off for ranger first
+  # bring-up — chat is text-only, goes through liaison. Drop a
+  # `speech:` block + audio primitives into this manifest later when
+  # mics are wired.
 
-  # liaison / nexus / memory / scene: same as the webots example. They
-  # auto-discover topics from atlas, no per-deploy sensor wiring needed.
   liaison:
     listen: 127.0.0.1:50081
     log: info
@@ -79,7 +74,7 @@ primitive:
       lidar_ip: 192.168.1.161
       # host_ip: omit → atlas_bridge auto-resolves via `ip route get`.
       # Override only if the Jetson NIC's static config drifts.
-      xfer_format: 2          # PointCloud2 XYZIT (rtabmap-friendly)
+      xfer_format: 2 # PointCloud2 XYZIT (rtabmap-friendly)
       sentinel_timeout_s: 30.0
 
   # ── MID-360 IMU (topic shim, no ROS spawn) ──────────────────────────
@@ -103,23 +98,20 @@ primitive:
       rgb_profile: 640x480x30
       depth_profile: 848x480x30
       align_depth: true
-      enable_imu: true        # published, NOT atlas-routed (mid360 IMU is canonical)
+      enable_imu: true # published, NOT atlas-routed (mid360 IMU is canonical)
       enable_sync: true
       sentinel_timeout_s: 30.0
 
   # ── Ranger Mini chassis ─────────────────────────────────────────────
-  # Disabled in this initial bring-up — the chassis isn't powered on
-  # for the rtabmap-only first test. Uncomment once the chassis is
-  # ready and CAN bus is up.
-  # - name: ranger_chassis
-  #   url: https://github.com/enkerewpo/ranger_chassis_rbnx
-  #   branch: main
-  #   config:
-  #     port_name: can_ranger
-  #     robot_model: ranger_mini_v2
-  #     odom_topic_name: odom
-  #     publish_odom_tf: false   # let soma's robot_state_publisher own /tf
-  #     sentinel_timeout_s: 30.0
+  - name: ranger_chassis
+    url: https://github.com/enkerewpo/ranger_chassis_rbnx
+    branch: main
+    config:
+      port_name: can_ranger
+      robot_model: ranger_mini_v2
+      odom_topic_name: odom
+      publish_odom_tf: true # soma not yet shipped — chassis owns /tf for now
+      sentinel_timeout_s: 30.0
 
 service:
   # ── SLAM (rtabmap) ──────────────────────────────────────────────────
@@ -134,9 +126,9 @@ service:
       platform: jetson_orin
       sensors:
         lidar2d: false
-        lidar3d: true       # MID-360 PointCloud2
-        rgb: true           # RealSense visual loop closure
-        rgbd: true          # RealSense depth → 3D fusion
+        lidar3d: true # MID-360 PointCloud2
+        rgb: true # RealSense visual loop closure
+        rgbd: true # RealSense depth → 3D fusion
         # imu: rtabmap launch doesn't wire IMU yet (the comment in
         # launch/rtabmap_2d.launch.py promises it but the code isn't
         # there). Leave OFF for the first bring-up — the MID-360's
@@ -147,14 +139,17 @@ service:
         # odometry internally from lidar (icp_odometry) / RGBD.
         # Flip to true once ranger_chassis_rbnx is enabled.
         odom: false
+  # ── Navigation ───────────────────────────────────────────────
+  - name: nav2
+    url: https://github.com/enkerewpo/nav2_wrapper_rbnx
+    branch: main
+    config: {}
 
-  # ── Navigation (TODO) ───────────────────────────────────────────────
-  # Will be `nav2_wrapper_rbnx` once we lift it from webots. Disabled
-  # this run since the chassis isn't powered.
-  # - name: nav2
-  #   url: https://github.com/enkerewpo/nav2_wrapper_rbnx
-  #   branch: main
-  #   config: {}
-
-# Skills: deferred. The explore skill won't be useful without the chassis.
-# skill: []
+skill:
+  - name: explore
+    url: https://github.com/enkerewpo/explore_rbnx
+    branch: main
+    config:
+      # example place holders
+      explore_mode: frontier
+      timeout_s: 600
