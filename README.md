@@ -10,11 +10,11 @@ All package URLs in `robonix_manifest.yaml` resolve from this enkerewpo GitHub o
 
 | Package                  | Repo                                             | Owns                  |
 | ------------------------ | ------------------------------------------------ | --------------------- |
-| `mid360_lidar_rbnx`      | enkerewpo/mid360_lidar_rbnx                      | primitive/lidar/*     |
-| `mid360_imu_rbnx`        | enkerewpo/mid360_imu_rbnx                        | primitive/imu/*       |
-| `realsense_camera_rbnx`  | enkerewpo/realsense_camera_rbnx                  | primitive/camera/*    |
-| `ranger_chassis_rbnx`    | enkerewpo/ranger_chassis_rbnx                    | primitive/chassis/*   |
-| `mapping_rbnx`           | enkerewpo/mapping_rbnx                           | service/map/*         |
+| `mid360_lidar_rbnx`      | syswonder/primitive-livox-mid360-lidar-rbnx                      | primitive/lidar/*     |
+| `mid360_imu_rbnx`        | syswonder/primitive-livox-mid360-imu-rbnx                        | primitive/imu/*       |
+| `realsense_camera_rbnx`  | syswonder/primitive-intel-realsense_d435i-camera-rbnx                  | primitive/camera/*    |
+| `ranger_chassis_rbnx`    | syswonder/primitive-agilex-rangerminiv3-chassis-rbnx                    | primitive/chassis/*   |
+| `mapping_rbnx`           | syswonder/service-map-rbnx                           | service/map/*         |
 
 ```bash
 # on the Jetson, in this directory:

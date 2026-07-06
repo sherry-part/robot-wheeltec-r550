@@ -67,7 +67,7 @@ primitive:
   # Owns primitive/lidar/*. Spawns livox_ros_driver2 in Driver.Init.
   # Also makes /livox/imu live on the bus (consumed by mid360_imu below).
   - name: mid360_lidar
-    url: https://github.com/enkerewpo/mid360_lidar_rbnx
+    url: https://github.com/syswonder/primitive-livox-mid360-lidar-rbnx
     branch: main
     config:
       lidar_topic: /scanner/cloud
@@ -82,7 +82,7 @@ primitive:
   # livox launch publishes) and atlas-routes it. If mid360_lidar isn't
   # initialized yet, this returns deferred and rbnx retries.
   - name: mid360_imu
-    url: https://github.com/enkerewpo/mid360_imu_rbnx
+    url: https://github.com/syswonder/primitive-livox-mid360-imu-rbnx
     branch: main
     config:
       imu_topic: /livox/imu
@@ -91,7 +91,7 @@ primitive:
   # ── RealSense D435i (RGBD) ─────────────────────────────────────────
   # Owns primitive/camera/*. Spawns realsense2_camera's rs_launch.py.
   - name: realsense_camera
-    url: https://github.com/enkerewpo/realsense_camera_rbnx
+    url: https://github.com/syswonder/primitive-intel-realsense_d435i-camera-rbnx
     branch: main
     config:
       camera_name: camera_435i
@@ -104,7 +104,7 @@ primitive:
 
   # ── Ranger Mini chassis ─────────────────────────────────────────────
   - name: ranger_chassis
-    url: https://github.com/enkerewpo/ranger_chassis_rbnx
+    url: https://github.com/syswonder/primitive-agilex-rangerminiv3-chassis-rbnx
     branch: main
     config:
       port_name: can_ranger
@@ -119,7 +119,7 @@ service:
   # configures rtabmap to fuse them. Outputs service/map/{occupancy_grid,
   # pointcloud, pose, odom} on atlas — algo-agnostic for consumers.
   - name: mapping
-    url: https://github.com/enkerewpo/mapping_rbnx
+    url: https://github.com/syswonder/service-map-rbnx
     branch: main
     config:
       algo: rtabmap
@@ -141,13 +141,13 @@ service:
         odom: false
   # ── Navigation ───────────────────────────────────────────────
   - name: nav2
-    url: https://github.com/enkerewpo/nav2_wrapper_rbnx
+    url: https://github.com/syswonder/service-navigation-rbnx
     branch: main
     config: {}
 
 skill:
   - name: explore
-    url: https://github.com/enkerewpo/explore_rbnx
+    url: https://github.com/syswonder/skill-explore-rbnx
     branch: main
     config:
       # example place holders

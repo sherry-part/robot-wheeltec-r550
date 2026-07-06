@@ -16,7 +16,7 @@ robonix 主仓在 `/home/syswonder/wheatfox/robonix`（包含 `rbnx` 工具链 +
 
 ```bash
 cd ~
-git clone https://github.com/enkerewpo/ranger_mini_deploy robonix-v0.1-deploy
+git clone https://github.com/syswonder/robot-agilex-rangerminiv3 robonix-v0.1-deploy
 cd robonix-v0.1-deploy
 ```
 
