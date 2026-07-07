@@ -1,19 +1,19 @@
-# ranger_mini_deploy
+# wheeltec_r550_deploy
 
-Robonix deploy manifest for the AgileX Ranger Mini robot at SysWonder lab.
+Robonix deploy manifest for the WHEELTEC R550 robot at SysWonder lab.
 
-Hardware: Jetson Orin (aarch64, Tegra-special CUDA stack), AgileX Ranger Mini v2 chassis (CAN bus), Livox MID-360 3D LiDAR + integrated 6-axis IMU (Ethernet), Intel RealSense D435i RGBD camera (USB 3.0, with internal IMU).
+Hardware: Jetson Orin (aarch64, Tegra-special CUDA stack), WHEELTEC R550 chassis, Livox MID-360 3D LiDAR + integrated 6-axis IMU (Ethernet), Intel RealSense D435i RGBD camera (USB 3.0, with internal IMU).
 
 ## Packages
 
-All package URLs in `robonix_manifest.yaml` resolve from this enkerewpo GitHub org:
+All package URLs in `robonix_manifest.yaml` resolve from the SysWonder GitHub organization:
 
 | Package                  | Repo                                             | Owns                  |
 | ------------------------ | ------------------------------------------------ | --------------------- |
 | `mid360_lidar_rbnx`      | syswonder/primitive-livox-mid360-lidar-rbnx                      | primitive/lidar/*     |
 | `mid360_imu_rbnx`        | syswonder/primitive-livox-mid360-imu-rbnx                        | primitive/imu/*       |
 | `realsense_camera_rbnx`  | syswonder/primitive-intel-realsense_d435i-camera-rbnx                  | primitive/camera/*    |
-| `ranger_chassis_rbnx`    | syswonder/primitive-agilex-rangerminiv3-chassis-rbnx                    | primitive/chassis/*   |
+| `wheeltec_chassis_rbnx`  | syswonder/primitive-wheeltec-r550-chassis-rbnx                          | primitive/chassis/*   |
 | `mapping_rbnx`           | syswonder/service-map-rbnx                           | service/map/*         |
 
 ```bash
@@ -26,7 +26,7 @@ rbnx boot  .         # spawns each one and runs Driver(CMD_INIT, config)
 
 ## URDF — required, not shipped
 
-Soma needs a Ranger Mini URDF (`urdf_path` in the system.soma block). The URDF must include `base_link` (chassis frame; convention: ground projection of the geometric centre, X forward, Z up), `livox_frame` mount transform from `base_link`, and `camera_link` + `camera_color_optical_frame` mount transforms.
+Soma needs a WHEELTEC R550 URDF (`urdf_path` in the system.soma block). The URDF must include `base_link` (chassis frame; convention: ground projection of the geometric centre, X forward, Z up), `livox_frame` mount transform from `base_link`, and `camera_link` + `camera_color_optical_frame` mount transforms.
 
 Until a calibrated URDF is in hand, an interim path is to launch `static_transform_publisher` for each frame manually. Sketch (drop in a side-launch, replace x y z and roll pitch yaw with your measured mount values):
 
