@@ -1,0 +1,117 @@
+# Soma body description for the Wheeltec R550 mini_tank deploy.
+#
+# Soma v2 serves this YAML and the referenced URDF as raw text. Keep this file
+# aligned with system/soma/README.md: robot-level exports plus hierarchical
+# robot.components. The active URDF is the Wheeltec R550 mini_tank model;
+# robot_state_publisher publishes the full TF tree from it.
+
+urdf:
+  path: ./urdf/mini_tank_robot.urdf
+  root_link: base_link
+  model_name: wheeltec_r550_mini_tank
+
+robot:
+  id: wheeltec_r550_01
+  display_name: "Wheeltec R550 mini_tank — N10P 2D LiDAR + Orbbec Astra S RGB-D + RTABMAP + Nav2"
+  family: mobile_robot
+  root_part: base
+  dimensions: { length_m: 0.55, width_m: 0.40, height_m: 0.35 }
+  # Collision hull of the mobile base in base_link.
+  # The points describe the robot's physical footprint and are consumed
+  # through robonix/system/soma/footprint by navigation (nav2).
+  footprint:
+    base_frame: base_link
+    points:
+      - [0.275, 0.20]
+      - [0.275, -0.20]
+      - [-0.275, -0.20]
+      - [-0.275, 0.20]
+  mass_kg: 15.0
+  passable_door_width_m: 0.60
+
+  exports:
+    - provider_id: robot_description
+      capabilities:
+        - { path: robonix/primitive/robot_description/driver, description: "Publish the Soma-owned URDF as /robot_description and TF." }
+    - provider_id: mapping
+      capabilities:
+        - { path: robonix/service/map/occupancy_grid, description: "Provide the live 2D occupancy grid from rtabmap." }
+        - { path: robonix/service/map/pointcloud, description: "Provide the fused 3D map point cloud." }
+        - { path: robonix/service/map/pose, description: "Provide the robot pose in the map frame." }
+        - { path: robonix/service/map/odom, description: "Provide map-aware odometry." }
+    - provider_id: nav2
+      capabilities:
+        - { path: robonix/service/navigation/navigate, description: "Navigate to a 2D goal pose." }
+        - { path: robonix/service/navigation/navigate/status, description: "Report the current navigation goal status." }
+        - { path: robonix/service/navigation/navigate/cancel, description: "Cancel the active navigation goal." }
+    - provider_id: scene
+      capabilities:
+        - { path: robonix/system/scene/list_objects, description: "List current semantic scene objects." }
+        - { path: robonix/system/scene/goal_near, description: "Find a reachable navigation goal near an object." }
+
+  components:
+    - id: base
+      type: mobile_base
+      urdf_link: base_link
+      exports:
+        - provider_id: r550_chassis
+          capabilities:
+            - { path: robonix/primitive/chassis/move, description: "Command Wheeltec R550 chassis motion via /cmd_vel." }
+            - { path: robonix/primitive/chassis/odom, description: "Read EKF-fused odometry from /odom_combined." }
+            - { path: robonix/primitive/chassis/twist_in, description: "Accept velocity commands on the chassis command input." }
+      components:
+        - id: lidar
+          type: lidar_2d
+          urdf_link: laser
+          exports:
+            - provider_id: lslidar_n10p
+              capabilities:
+                - { path: robonix/primitive/lidar/lidar, description: "Stream LSLIDAR N10P 2D LaserScan on /scan." }
+
+        - id: imu
+          type: imu
+          urdf_link: gyro_link
+          exports:
+            - provider_id: r550_chassis
+              capabilities:
+                - { path: robonix/primitive/imu/imu, description: "Stream Madgwick-filtered IMU data from /imu_data." }
+
+        - id: front_rgbd
+          type: rgbd_camera
+          urdf_link: camera_link
+          exports:
+            - provider_id: astra_s_camera
+              capabilities:
+                - { path: robonix/primitive/camera/rgb, description: "Stream Orbbec Astra S RGB images for mapping and scene." }
+                - { path: robonix/primitive/camera/depth, description: "Stream Orbbec Astra S aligned depth images." }
+                - { path: robonix/primitive/camera/intrinsics, description: "Publish Orbbec Astra S camera intrinsics (bound to native CameraInfo topic)." }
+                - { path: robonix/primitive/camera/snapshot, description: "Capture a one-shot RGB JPEG snapshot (MCP)." }
+                - { path: robonix/primitive/camera/depth_snapshot, description: "Capture a one-shot depth JPEG snapshot (MCP)." }
+
+description:
+  summary: >-
+    Indoor mobile robot based on a Wheeltec R550 mini_tank chassis. Uses an
+    LSLIDAR N10P 2D laser scanner, an Orbbec Astra S RGB-D depth camera, a
+    built-in IMU with Madgwick filter and EKF fusion, rtabmap for SLAM mapping,
+    and Nav2 for goal-based navigation. The Astra S provides RGB and depth
+    streams plus snapshot MCP tools for VLM perception and scene understanding.
+  can_do:
+    - "Drive on flat indoor floors with differential-drive velocity commands."
+    - "Build and maintain a 2D occupancy grid map with rtabmap (laser + odometry)."
+    - "Navigate to 2D goal poses using Nav2 with the live costmap."
+    - "Provide EKF-fused odometry and Madgwick-filtered IMU orientation."
+    - "Capture RGB, depth, and IR images from the Orbbec Astra S camera."
+    - "Provide one-shot RGB and depth snapshots for VLM perception."
+  cannot_do:
+    - "Perceive 3D structure above or below the fixed 2D laser plane."
+    - "Manipulate objects — no arm or gripper is deployed."
+    - "Climb stairs or tall curbs."
+  notes:
+    - "URDF path is not yet set — place the Wheeltec R550 URDF and update urdf.path."
+    - "The Orbbec Astra S camera provides RGB + depth + IR streams for scene understanding."
+    - "scene pins camera_provider_id to astra_s_camera for visual scene queries."
+    - "nav2 consumes the Soma footprint (via robonix/system/soma/footprint) for self-filtering in costmaps."
+    - "mapping sensor_providers pin lidar2d → lslidar_n10p and odom → r550_chassis."
+    - "nav2 provider_ids pin map → mapping, odom → r550_chassis, scan → lslidar_n10p."
+    - "camera urdf_link (camera_link) must match the link name in the URDF; update if different."
+    - "A deploy-owned nav2_params.yaml must be created at config/nav2_params.yaml next to robonix_manifest.yaml."

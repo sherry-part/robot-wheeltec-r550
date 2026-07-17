@@ -1,0 +1,5 @@
+Reg/Strategy: 1
+Reg/Force3DoF: true
+RGBD/NeighborLinkRefining: True
+Grid/RangeMin: 0.2
+Optimizer/GravitySigma: 0 
