@@ -4,3 +4,5 @@ rbnx-boot/
 .idea/
 *.swp
 __pycache__/
+*.pyc
+.venv/
