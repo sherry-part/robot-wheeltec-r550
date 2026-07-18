@@ -1,7 +1,7 @@
 # Wheeltec R550 mini_tank
 
 Robonix deployment for the SysWonder Wheeltec R550 mini_tank: Jetson Orin,
-LSLIDAR N10P, Orbbec Astra S, RTAB-Map, Scene, Nav2, and VLM pilot.
+LSLIDAR N10P, Orbbec Astra S, RTAB-Map, Scene, Nav2, Explore, and VLM pilot.
 
 The deployment uses native ROS 2 packages on Jetson. Each package entry selects
 its own `package_manifest*.yaml`, so architecture and native/container choices are
@@ -103,9 +103,15 @@ rviz2 -d config/wheeltec.rviz
 
 ## Safety and bring-up order
 
-The checked-in full manifest includes the chassis, lidar, camera, mapping, and
-Nav2; starting it exposes physical motion capabilities. Keep the hardware
-emergency stop available and clear the workspace before full bring-up.
+The checked-in full manifest includes the chassis, lidar, camera, mapping,
+Nav2, and the Explore skill; starting it exposes physical motion capabilities.
+Keep the hardware emergency stop available and clear the workspace before full
+bring-up.
+
+Explore is a lazy-activate skill — it stays INACTIVE at boot and only activates
+when the LLM/pilot invokes `robonix/skill/explore/explore`. Once active, it
+drives the robot autonomously through frontier-based exploration. Ensure mapping
+and Nav2 are healthy before triggering Explore.
 
 After the chassis is powered on:
 
@@ -113,6 +119,7 @@ After the chassis is powered on:
 2. Send zero Twist and confirm the watchdog holds the base stopped.
 3. Use a low-speed, short-duration command in a clear area.
 4. Verify Mapping pose and Nav2 costmaps before sending a nearby goal.
+5. Only then test Explore via `rbnx chat` ("explore this room").
 
 ## Robot description
 
@@ -156,6 +163,10 @@ base (mobile_base, base_link)
 | `robonix/service/navigation/navigate` | nav2 | gRPC + MCP |
 | `robonix/service/navigation/navigate/status` | nav2 | gRPC + MCP |
 | `robonix/service/navigation/navigate/cancel` | nav2 | gRPC + MCP |
+| `robonix/skill/explore/driver` | explore | gRPC |
+| `robonix/skill/explore/explore` | explore | MCP |
+| `robonix/skill/explore/explore/status` | explore | MCP |
+| `robonix/skill/explore/explore/cancel` | explore | MCP |
 
 ## Provider dependency graph
 
@@ -181,15 +192,19 @@ r550_chassis                          ← needs /robot_description for joint sta
             ├──► nav2                 ← map + odom + scan
             │       navigation/{navigate, status, cancel}
             │
-            └──► scene                ← camera (astra_s_camera)
-                    scene/{list_objects, goal_near}
+            ├──► scene                ← camera (astra_s_camera)
+            │       scene/{list_objects, goal_near}
+            │
+            └──► explore              ← map + nav2 (lazy-activate)
+                    skill/explore/{explore, status, cancel}
 ```
 
 Boot order follows this dependency chain: system caps first (atlas → soma →
 executor → pilot → liaison → scene), then primitives in declaration order
 (robot_description → chassis → lidar → camera), then services (mapping →
-nav2). Services use the Atlas defer-queue: nav2 waits for mapping, which waits
-for lidar + chassis.
+nav2), then skills (explore — lazy-activate, stays INACTIVE until LLM
+invokes it). Services use the Atlas defer-queue: nav2 waits for mapping, which
+waits for lidar + chassis.
 
 ## Verification
 

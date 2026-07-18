@@ -172,3 +172,11 @@ service:
         map: mapping
         odom: r550_chassis
         scan: n10p_lslidar
+
+# ── skills ──────────────────────────────────────────────────────────────────
+# Skills are user-invocable (LLM/pilot-driven) atomic intents. They lazy-activate:
+# stay INACTIVE at boot and activate on first MCP call.
+skill:
+  - name: explore
+    path: ./skills/skill-explore-rbnx
+    config: {}
