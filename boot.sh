@@ -23,7 +23,7 @@ cd "$SCRIPT_DIR"
 # ── config ──────────────────────────────────────────────────────────────────
 # Fill in your VLM credentials here, or pre-export in your shell rc.
 : "${VLM_BASE_URL:=https://dashscope.aliyuncs.com/compatible-mode/v1}"
-: "${VLM_API_KEY:=sk-ws-H.EDRYIYL.u6Oi.MEUCIQDrlzWi9m1ubQf-PIaDpiOn7pmwkdSDu1HLxSm_-_H6zAIgUQABqBnIeT32lFWO6SRwM74MBTIEWazLDVskGuXyTdM}"
+: "${VLM_API_KEY:=sk-...}"
 : "${VLM_MODEL:=qwen-vl-max}"
 
 export VLM_BASE_URL VLM_API_KEY VLM_MODEL
